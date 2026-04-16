@@ -1777,9 +1777,9 @@ Transaction Summary
                 print(_("Command Line   :"), old.cmdline)
 
         def print_persistence(persistence):
-            if persistence == libdnf.transaction.TransactionPersistence_PERSIST:
+            if old.persistence == libdnf.transaction.TransactionPersistence_PERSIST:
                 persistence_str = "Persist"
-            elif persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
+            elif old.persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
                 persistence_str = "Transient"
             else:
                 persistence_str = "Unknown"
@@ -1845,7 +1845,7 @@ Transaction Summary
 
         :param old: the :class:`DnfSwdbTrans` to
            print information about
-        :param pats: a list of patterns.  Packages that match a pattern
+        :param pats: a list of patterns.  Packages that match a patten
            in *pats* will be highlighted in the output
         """
         #  Note that these don't use _simple_pkg() because we are showing what
