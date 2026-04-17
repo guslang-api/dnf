@@ -10,11 +10,12 @@
 # ANY WARRANTY expressed or implied, including the implied warranties of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License for more details.  You should have received a copy of the
-# GNU General Public License along with this program; if not, see
-# <https://www.gnu.org/licenses/>.  Any Red Hat trademarks that are
-# incorporated in the source code or documentation are not subject to the GNU
-# General Public License and may only be used or replicated with the express
-# permission of Red Hat, Inc.
+# GNU General Public License along with this program; if not, write to the
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.  Any Red Hat trademarks that are incorporated in the
+# source code or documentation are not subject to the GNU General Public
+# License and may only be used or replicated with the express permission of
+# Red Hat, Inc.
 #
 
 from __future__ import unicode_literals
@@ -181,7 +182,7 @@ class OptionParser(argparse.ArgumentParser):
                                  help=_("show {prog} version and exit").format(
                                      prog=dnf.util.MAIN_PROG_UPPER))
         general_grp.add_argument("--installroot", help=_("set install root"),
-                                 metavar='PATH')
+                                 metavar='PATH]')
         general_grp.add_argument("--nodocs", action="store_const", const=['nodocs'], dest='tsflags',
                                  help=_("do not install documentations"))
         general_grp.add_argument("--noplugins", action="store_false",
@@ -190,11 +191,11 @@ class OptionParser(argparse.ArgumentParser):
         general_grp.add_argument("--enableplugin", dest="enableplugin",
                                  default=[], action=self._SplitCallback,
                                  help=_("enable plugins by name"),
-                                 metavar='PLUGIN')
+                                 metavar='PLUGIN]')
         general_grp.add_argument("--disableplugin", dest="disableplugin",
                                  default=[], action=self._SplitCallback,
                                  help=_("disable plugins by name"),
-                                 metavar='PLUGIN')
+                                 metavar='PLUGIN]')
         general_grp.add_argument("--releasever", default=None,
                                  help=_("override the value of $releasever"
                                         " in config and repo files"))

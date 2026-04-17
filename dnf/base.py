@@ -12,7 +12,8 @@
 # GNU Library General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, see <https://www.gnu.org/licenses/>.
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 """
 Supplies the Base class.
@@ -117,7 +118,6 @@ class Base(object):
         self._update_security_options = {}
         self._allow_erasing = False
         self._repo_set_imported_gpg_keys = set()
-        self._persistence = libdnf.transaction.TransactionPersistence_UNKNOWN
         self.output = None
 
     def __enter__(self):
@@ -639,9 +639,6 @@ class Base(object):
     if hasattr(rpm, 'RPMTRANS_FLAG_NOCAPS'):
         # Introduced in rpm-4.14
         _TS_FLAGS_TO_RPM['nocaps'] = rpm.RPMTRANS_FLAG_NOCAPS
-    if hasattr(rpm, 'RPMTRANS_FLAG_NOPLUGINS'):
-        # Introduced in rpm-4.12
-        _TS_FLAGS_TO_RPM['noplugins'] = rpm.RPMTRANS_FLAG_NOPLUGINS
 
     _TS_VSFLAGS_TO_RPM = {'nocrypto': rpm._RPMVSF_NOSIGNATURES |
                           rpm._RPMVSF_NODIGESTS}
@@ -976,7 +973,7 @@ class Base(object):
                 else:
                     rpmdb_version = old.end_rpmdb_version
 
-                self.history.beg(rpmdb_version, [], [], cmdline=cmdline, persistence=self._persistence)
+                self.history.beg(rpmdb_version, [], [], cmdline)
                 self.history.end(rpmdb_version)
             self._plugins.run_pre_transaction()
             self._plugins.run_transaction()
@@ -1127,8 +1124,7 @@ class Base(object):
                 cmdline = ' '.join(self.cmds)
 
             comment = self.conf.comment if self.conf.comment else ""
-            tid = self.history.beg(rpmdbv, using_pkgs, [], cmdline=cmdline,
-                                   comment=comment, persistence=self._persistence)
+            tid = self.history.beg(rpmdbv, using_pkgs, [], cmdline, comment)
 
         if self.conf.reset_nice:
             onice = os.nice(0)
@@ -1405,6 +1401,7 @@ class Base(object):
                     result = 1
                 else:
                     result = 2
+                result = 1
                 msg = _('Public key for %s is not trusted') % localfn
 
             elif sigresult == 4:
@@ -2315,23 +2312,9 @@ class Base(object):
                 logger.warning(_('No packages marked for removal.'))
 
         else:
-            unneeded_pkgs = self.sack.query()._unneeded(self.history.swdb,
+            pkgs = self.sack.query()._unneeded(self.history.swdb,
                                                debug_solver=self.conf.debug_solver)
-
-            protected = self.sack.query().installed().filterm(name=self.conf.protected_packages)
-            protected_found = False
-            for pkg in protected:
-                if pkg in unneeded_pkgs:
-                    msg = _('Unneeded protected package: %s (and its dependencies) cannot be removed, '
-                            'either mark it as user-installed or change protected_packages configuration option.')
-                    logger.warning(msg, pkg)
-                    protected_found = True
-
-            if protected_found:
-                unneeded_pkgs = self.sack.query()._unneeded_extra_userinstalled(self.history.swdb, protected,
-                                                   debug_solver=self.conf.debug_solver)
-
-            for pkg in unneeded_pkgs:
+            for pkg in pkgs:
                 self.package_remove(pkg)
 
     def remove(self, pkg_spec, reponame=None, forms=None):

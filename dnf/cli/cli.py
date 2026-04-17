@@ -12,7 +12,8 @@
 # GNU Library General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, see <https://www.gnu.org/licenses/>.
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Written by Seth Vidal
 
@@ -28,9 +29,7 @@ try:
     from collections.abc import Sequence
 except ImportError:
     from collections import Sequence
-from collections import defaultdict
 import datetime
-from fnmatch import fnmatch
 import logging
 import operator
 import os
@@ -224,7 +223,6 @@ class BaseCli(dnf.Base):
             # Handle bootc transactions. `--transient` must be specified if
             # /usr is not already writeable.
             bootc_system = None
-            bootc_system_needs_unlock = False
             if is_bootc_transaction:
                 if self.conf.persistence == "persist":
                     logger.info(_("Persistent transactions aren't supported on bootc systems."))
@@ -246,38 +244,16 @@ class BaseCli(dnf.Base):
                         logger.info(_("A transient overlay will be created on /usr that will be discarded on reboot. "
                                       "Keep in mind that changes to /etc and /var will still persist, and packages "
                                       "commonly modify these directories."))
-                        bootc_system_needs_unlock = True
-                self._persistence = libdnf.transaction.TransactionPersistence_TRANSIENT
-
-                # Check whether the transaction modifies usr_drift_protected_paths
-                transaction_protected_paths = defaultdict(list)
-                for pkg in trans:
-                    for pkg_file_path in sorted(pkg.files):
-                        for protected_pattern in self.conf.usr_drift_protected_paths:
-                            if fnmatch(pkg_file_path, protected_pattern):
-                                transaction_protected_paths[pkg.nevra].append(pkg_file_path)
-                if transaction_protected_paths:
-                    logger.info(_('This operation would modify the following paths, possibly introducing '
-                                  'inconsistencies when the transient overlay on /usr is discarded. See the '
-                                  'usr_drift_protected_paths configuration option for more information.'))
-                    for nevra, protected_paths in transaction_protected_paths.items():
-                        logger.info(nevra)
-                        for protected_path in protected_paths:
-                            logger.info("  %s" % protected_path)
-                    raise CliError(_("Operation aborted. Pass --setopt=usr_drift_protected_paths= to disable this check and proceed anyway."))
-
             else:
                 # Not a bootc transaction.
                 if self.conf.persistence == "transient":
                     raise CliError(_("Transient transactions are only supported on bootc systems."))
 
-                self._persistence = libdnf.transaction.TransactionPersistence_PERSIST
-
             if self._promptWanted():
                 if self.conf.assumeno or not self.output.userconfirm():
                     raise CliError(_("Operation aborted."))
 
-            if bootc_system and bootc_system_needs_unlock:
+            if bootc_system:
                 bootc_system.make_writable()
         else:
             logger.info(_('Nothing to do.'))
@@ -375,15 +351,15 @@ class BaseCli(dnf.Base):
             raise dnf.exceptions.Error(_("GPG check FAILED"))
 
     def latest_changelogs(self, package):
-        """Return list of changelogs for package newer then newest installed version"""
-        newest_times = []
-        # find the date of the newest changelog for installed versions of package
+        """Return list of changelogs for package newer then installed version"""
+        newest = None
+        # find the date of the newest changelog for installed version of package
         # stored in rpmdb
         for mi in self._rpmconn.readonly_ts.dbMatch('name', package.name):
             changelogtimes = mi[rpm.RPMTAG_CHANGELOGTIME]
             if changelogtimes:
-                newest_times.append(datetime.date.fromtimestamp(changelogtimes[0]))
-        newest = max(newest_times) if newest_times else None
+                newest = datetime.date.fromtimestamp(changelogtimes[0])
+                break
         chlogs = [chlog for chlog in package.changelogs
                   if newest is None or chlog['timestamp'] > newest]
         return chlogs
@@ -977,7 +953,6 @@ class Cli(object):
                       )
                 )
 
-
     def _read_conf_file(self, releasever=None, releasever_major=None, releasever_minor=None):
         timer = dnf.logging.Timer('config')
         conf = self.base.conf
@@ -1019,13 +994,9 @@ class Cli(object):
                 if arg is not None:
                     return arg
             return None
-        # Setting conf.releasever rewrites conf.releasever_major and
-        # conf.releasever_minor. Copy them for later use.
-        old_releasever_major = conf.releasever_major
-        old_releasever_minor = conf.releasever_minor
         conf.releasever = or_else(releasever, conf.releasever)
-        conf.releasever_major = or_else(releasever_major, det_major, old_releasever_major)
-        conf.releasever_minor = or_else(releasever_minor, det_minor, old_releasever_minor)
+        conf.releasever_major = or_else(releasever_major, det_major, conf.releasever_major)
+        conf.releasever_minor = or_else(releasever_minor, det_minor, conf.releasever_minor)
 
         if conf.releasever is None:
             logger.warning(_("Unable to detect release version (use '--releasever' to specify "

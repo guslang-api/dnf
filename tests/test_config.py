@@ -9,18 +9,18 @@
 # ANY WARRANTY expressed or implied, including the implied warranties of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License for more details.  You should have received a copy of the
-# GNU General Public License along with this program; if not, see
-# <https://www.gnu.org/licenses/>.  Any Red Hat trademarks that are
-# incorporated in the source code or documentation are not subject to the GNU
-# General Public License and may only be used or replicated with the express
-# permission of Red Hat, Inc.
+# GNU General Public License along with this program; if not, write to the
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.  Any Red Hat trademarks that are incorporated in the
+# source code or documentation are not subject to the GNU General Public
+# License and may only be used or replicated with the express permission of
+# Red Hat, Inc.
 #
 
 from __future__ import unicode_literals
 
 import argparse
 
-import dnf
 import dnf.conf
 import dnf.conf.read
 import dnf.exceptions
@@ -164,14 +164,3 @@ class ConfTest(tests.support.TestCase):
         self.assertEqual(conf.releasever, '1.2')
         self.assertEqual(conf.releasever_major, '3')
         self.assertEqual(conf.releasever_minor, '4')
-
-    def test__read_conf_file_preserves_autodetected_releasever_major_minor(self):
-        base = dnf.Base()
-        base.conf.releasever = '1'  # Do not set to '1.2', autodetection pretends '1'
-        base.conf.releasever_major = '1'
-        base.conf.releasever_minor = '2'
-        cli = dnf.cli.Cli(base)
-        cli._read_conf_file()
-        self.assertEqual(base.conf.releasever, '1')
-        self.assertEqual(base.conf.releasever_major, '1')
-        self.assertEqual(base.conf.releasever_minor, '2')

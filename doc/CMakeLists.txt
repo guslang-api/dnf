@@ -4,7 +4,7 @@
 if (${PYTHON_VERSION_MAJOR} STREQUAL "2")
     SET(SPHINX_BUILD_NAME "sphinx-build")
 else()
-    FIND_PROGRAM(SPHINX_BUILD_NAME "sphinx-build-3" "sphinx-build" REQUIRED)
+    SET(SPHINX_BUILD_NAME "sphinx-build-3")
 endif()
 
 

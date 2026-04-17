@@ -19,9 +19,7 @@ ELSE ()
     MESSAGE (FATAL_ERROR "Invalid PYTHON_DESIRED value: " ${PYTHON_DESIRED})
 ENDIF()
 
-IF (NOT PYTHON_INSTALL_DIR)
-    EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE} -c "from sys import stdout; from sysconfig import get_path; stdout.write(get_path('purelib'))" OUTPUT_VARIABLE PYTHON_INSTALL_DIR)
-ENDIF()
+EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE} -c "from sys import stdout; from sysconfig import get_path; stdout.write(get_path('purelib'))" OUTPUT_VARIABLE PYTHON_INSTALL_DIR)
 MESSAGE(STATUS "Python install dir is ${PYTHON_INSTALL_DIR}")
 
 ADD_SUBDIRECTORY (dnf)

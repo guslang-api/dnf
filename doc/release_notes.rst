@@ -8,86 +8,16 @@
   ANY WARRANTY expressed or implied, including the implied warranties of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
   Public License for more details.  You should have received a copy of the
-  GNU General Public License along with this program; if not, see
-  <https://www.gnu.org/licenses/>.  Any Red Hat trademarks that are
-  incorporated in the source code or documentation are not subject to the GNU
-  General Public License and may only be used or replicated with the express
-  permission of Red Hat, Inc.
+  GNU General Public License along with this program; if not, write to the
+  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+  02110-1301, USA.  Any Red Hat trademarks that are incorporated in the
+  source code or documentation are not subject to the GNU General Public
+  License and may only be used or replicated with the express permission of
+  Red Hat, Inc.
 
 ###################
  DNF Release Notes
 ###################
-
-====================
-4.25.0 Release Notes
-====================
-
-Enhancements:
-
-- DNF now recognizes Elbrus2000 architectures (e2k, e2kv4, e2kv5, and e2kv6)
-  and maps them to "e2k" base architecture.
-- Access control list is preserved when rotating log files.
-- DNF release notes are packaged now as a documentation.
-
-Bug fixes:
-
-- GPL-2.0 license text and disclaimers were updated to the current Free
-  Software Foundation's wording, replacing the invalid postal address.
-- Overlong dnf-bootc package description was wrapped.
-
-====================
-4.24.0 Release Notes
-====================
-
-Enhancements:
-
-- For all transactions on a Bootc system, store whether the transaction was
-  persistent or transient in the history database. This flags is visible in
-  "dnf history info" output.
-- Before performing a transient transaction on a Bootc system DNF checks for
-  changed files that could cause problems when discarding transient
-  transactions on the next reboot. The names of the files can be configured
-  using globs in paths configured in a new "usr_drift_protected_paths" option,
-  defaulting to "glob:/etc/dnf/usr-drift-protected-paths.d/*.conf".
-  Be ware that if the "usr_drift_protected_paths" option is set, filelist are
-  always downloaded.
-- Don't call scriptout() of TransactionProgress object with non-actionable
-  None argument.
-- Improve the included spec file to allow building with Ninja build system.
-- Document that modularity support, including "module" command, is
-  deprecated.
-- Document scriptout() hook of TransactionProgress class.
-
-Changes:
-
-- Minimal required libdnf version changed to 0.75.0.
-- Automatic plugin: Expand email_to variable in command_email emitter to
-  individual arguments. This is required to support s-nail. It is compatible
-  with mailx.
-- Remove support for building DNF for RHEL <= 7 from the included spec file.
-  This brings the spec file in line with DNF code which has been unbuildable
-  there for a long time.
-
-Bug fixes:
-
-- Check all installed versions of a package for the newest change log date.
-  This corrects obtaining a change log entry for packages which can be
-  installed in multiple versions (like kernel).
-- Fix detecting releasever_minor variable value in dnf-automatic tool.
-- Fix building on CentOS 9.
-- Fix packaging the dnf-automatic.timer to keep the systemd timer enabled when
-  when upgrading to DNF5.
-- Document changes in exit codes of some history subcommands between YUM and
-  DNF.
-- Correct a documentation of "--disableexcludes" and "--disableexcludepkgs"
-  options so that its clear that their values are not optional.
-- Fix incorrect Bootc documentation link.
-- Correct documentation to point to #dnf channel on Libera.Chat IRC network.
-- Close file handles during tests.
-
-Internal changes:
-
-- Allow using destdir option for the new manifest plugin.
 
 ====================
 4.23.0 Release Notes

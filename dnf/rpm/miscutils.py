@@ -9,7 +9,8 @@
 # GNU Library General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, see <https://www.gnu.org/licenses/>.
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # Copyright 2003 Duke University
 
 from __future__ import print_function, absolute_import, unicode_literals
@@ -38,7 +39,7 @@ def _process_rpm_output(data):
     # last newline.
     if len(data) < 3 or data[0] != b'-:' or data[-1]:
         return 2
-    trusted_sig, missing_key, not_trusted, not_signed = False, False, False, False
+    seen_sig, missing_key, not_trusted, not_signed = False, False, False, False
     for i in data[1:-1]:
         if b': BAD' in i:
             return 2
@@ -48,16 +49,12 @@ def _process_rpm_output(data):
             not_trusted = True
         elif i.endswith(b': NOTFOUND'):
             not_signed = True
-        # Some rpmkeys versions print Signature, some signature, accept both.
-        elif i.endswith(b': OK') and b'ignature,' in i:
-            trusted_sig = True
         elif not i.endswith(b': OK'):
             return 2
-    if missing_key:
-        return 1
-    elif not trusted_sig and not_trusted:
-        # Do not report untrusted signatures if there is a trusted one
+    if not_trusted:
         return 3
+    elif missing_key:
+        return 1
     elif not_signed:
         return 4
     # we still check return code, so this is safe

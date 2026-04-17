@@ -1,5 +1,8 @@
+# Always build out-of-source
+%define __cmake_in_source_build 1
+
 # default dependencies
-%global hawkey_version 0.76.0
+%global hawkey_version 0.74.0
 %global libcomps_version 0.1.8
 %global libmodulemd_version 2.9.3
 %global rpm_version 4.14.0
@@ -10,6 +13,15 @@
 %global conflicts_dnfdaemon_version 0.3.19
 
 %bcond dnf5_obsoletes_dnf %[0%{?fedora} > 40 || 0%{?rhel} > 10]
+
+# override dependencies for rhel 7
+%if 0%{?rhel} == 7
+    %global rpm_version 4.11.3-32
+%endif
+
+%if 0%{?rhel} == 7 && 0%{?centos}
+    %global rpm_version 4.11.3-25.el7.centos.1
+%endif
 
 # override dependencies for fedora 26
 %if 0%{?fedora} == 26
@@ -34,6 +46,9 @@
         %global yum_subpackage_name %{name}-yum
     %endif
 %endif
+%if 0%{?rhel} && 0%{?rhel} <= 7
+    %global yum_subpackage_name nextgen-yum4
+%endif
 
 # paths
 %global confdir %{_sysconfdir}/%{name}
@@ -50,7 +65,7 @@
 It supports RPMs, modules and comps groups & environments.
 
 Name:           dnf
-Version:        4.25.0
+Version:        4.24.0
 Release:        1%{?dist}
 Summary:        %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
@@ -70,7 +85,10 @@ BuildRequires:  bash-completion
 Requires:       coreutils
 BuildRequires:  %{_bindir}/sphinx-build-3
 Requires:       python3-%{name} = %{version}-%{release}
-%if 0%{?fedora}
+%if 0%{?rhel} && 0%{?rhel} <= 7
+Requires:       python-dbus
+Requires:       %{_bindir}/sqlite3
+%elif 0%{?fedora}
 Recommends:     (%{_bindir}/sqlite3 if (bash-completion and python3-dnf-plugins-core))
 %else
 Recommends:     (python3-dbus if NetworkManager)
@@ -130,7 +148,11 @@ Requires:       python3-libcomps >= %{libcomps_version}
 Requires:       python3-libdnf
 BuildRequires:  python3-rpm >= %{rpm_version}
 Requires:       python3-rpm >= %{rpm_version}
+%if 0%{?rhel} && 0%{?rhel} <= 7
+Requires:       rpm-plugin-systemd-inhibit
+%else
 Recommends:     (rpm-plugin-systemd-inhibit if systemd)
+%endif
 Provides:       dnf4 = %{version}-%{release}
 Provides:       dnf-command(alias)
 Provides:       dnf-command(autoremove)
@@ -177,20 +199,27 @@ Requires:       python3-gobject-base
 Requires:       util-linux-core
 
 %description bootc
-Additional dependencies needed to perform transactions on booted bootc
-(bootable containers) systems.
+Additional dependencies needed to perform transactions on booted bootc (bootable containers) systems.
 
 
 %prep
 %autosetup
 
+mkdir build-py3
+
 %build
-%cmake -DPYTHON_DESIRED:FILEPATH=%{__python3} -DDNF_VERSION=%{version}
-%cmake_build
-%cmake_build -t doc-man
+
+pushd build-py3
+%cmake .. -DPYTHON_DESIRED:FILEPATH=%{__python3} -DDNF_VERSION=%{version}
+%make_build
+make doc-man
+popd
 
 %install
-%cmake_install
+
+pushd build-py3
+%make_install
+popd
 
 %find_lang %{name}
 mkdir -p %{buildroot}%{confdir}/vars
@@ -264,13 +293,10 @@ rm %{buildroot}%{_unitdir}/%{name}-makecache.timer
 %endif
 
 %check
-%if 0%{?rhel} && 0%{?rhel} < 10
-pushd %{__cmake_builddir}
+
+pushd build-py3
 ctest -VV
 popd
-%else
-%ctest -VV
-%endif
 
 
 %if %{without dnf5_obsoletes_dnf}
@@ -288,10 +314,7 @@ popd
 %systemd_post dnf-automatic.timer dnf-automatic-notifyonly.timer dnf-automatic-download.timer dnf-automatic-install.timer
 
 %preun automatic
-if [ ! -e %{_unitdir}/dnf5-automatic.timer ]; then
-    %systemd_preun dnf-automatic.timer
-fi
-%systemd_preun dnf-automatic-notifyonly.timer dnf-automatic-download.timer dnf-automatic-install.timer
+%systemd_preun dnf-automatic.timer dnf-automatic-notifyonly.timer dnf-automatic-download.timer dnf-automatic-install.timer
 
 %postun automatic
 %systemd_postun_with_restart dnf-automatic.timer dnf-automatic-notifyonly.timer dnf-automatic-download.timer dnf-automatic-install.timer
@@ -301,7 +324,11 @@ fi
 %if %{without dnf5_obsoletes_dnf}
 %files -f %{name}.lang
 %{_bindir}/%{name}
+%if 0%{?rhel} && 0%{?rhel} <= 7
+%{_sysconfdir}/bash_completion.d/%{name}
+%else
 %{_datadir}/bash-completion/completions/%{name}
+%endif
 %{_mandir}/man8/%{name}.8*
 %{_mandir}/man8/yum2dnf.8*
 %{_mandir}/man7/dnf.modularity.7*
@@ -312,14 +339,13 @@ fi
 
 %files data
 %license COPYING PACKAGE-LICENSING
-%doc AUTHORS README.rst doc/release_notes.rst
+%doc AUTHORS README.rst
 %dir %{confdir}
 %dir %{confdir}/modules.d
 %dir %{confdir}/modules.defaults.d
 %dir %{pluginconfpath}
 %if %{without dnf5_obsoletes_dnf}
 %dir %{confdir}/protected.d
-%dir %{confdir}/usr-drift-protected-paths.d
 %dir %{confdir}/vars
 %endif
 %dir %{confdir}/aliases.d
@@ -409,54 +435,6 @@ fi
 # bootc subpackage does not include any files
 
 %changelog
-* Fri Nov 21 2025 Petr Pisar <ppisar@redhat.com> - 4.25.0-1
-- spec: Package release notes
-- spec: Wrap overlong dnf-bootc description
-- Update GPL-2.0 text to current FSF's wording
-- Teach dnf about Elbrus2000 architecture
-- Preserve ACL when rotating logs
-
-* Tue Oct 21 2025 Petr Písař <ppisar@redhat.com> - 4.24.0-1
-- TransactionProgress: don't call scriptout() with None
-- doc: document scriptout hook of TransactionProgress
-- Add exit code change of some history subcommands
-- Add Dane H Lim to contributors list
-- README: direct to Libera.Chat instead of Freenode
-- cli: Allow using destdir option for the new manifest plugin
-- packit: Use package version from the attached spec file
-- Fix building on CentOS 9
-- README: link to #dnf instead of #yum IRC
-- Do not disable dnf-automatic.timer when upgrading to dnf5-plugin-automatic
-- Fix typo from previous commit (left over `]`)
-- `--disableexcludes` and `--disableexcludepkgs` values are not optional
-- Add missing entries `.gitignore` file
-- Close file handles during tests
-- Add name and email to `AUTHORS`
-- bootc tmt testing
-- persistence: store persist/transient in history DB
-- Print "persist" or "transient" in history info
-- history: persistence for MergedTransaction
-- spec: Allow to build with ninja
-- spec: Remove support for RHEL <= 7
-- spec: Fix executing ctest on RHEL < 10
-- ci: Remove "DNF CI" workflow
-- conf: Test for segfaulting iterator in ConfigParser
-- bootc: Check whether protected paths will be modified
-- spec: package /etc/dnf/usr_drift_protected_paths.d
-- Support globs in usr_drift_protected_paths
-- doc: Document `usr_drift_protected_paths`
-- Load filelists if there are any usr_drift_protected_paths
-- Enable packit copr-builds and testing
-- Add nightly to bootc tests
-- Switch `centos-stream-9-x86_64` copr-builds to `centos-stream+epel-next-9-x86_64`
-- automatic: Expand email_to in command_email emitter to individual arguments
-- Add deprecation warning for module commands
-- Add modularity deprecation warning to doc pages
-- automatic: Fix detecting releasever_minor
-- Fix incorrect bootc documentation link
-- SideCI seems to have shut down in 2023
-- Check all installed versions of package for newest changelog date
-
 * Thu Mar 06 2025 Evan Goode <mail@evangoo.de> - 4.23.0-1
 - spec: toggle dnf5_obsoletes_dnf for RHEL 11
 - automatic: Enhance errors reporting

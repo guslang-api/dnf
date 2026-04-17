@@ -9,11 +9,12 @@
 # ANY WARRANTY expressed or implied, including the implied warranties of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License for more details.  You should have received a copy of the
-# GNU General Public License along with this program; if not, see
-# <https://www.gnu.org/licenses/>.  Any Red Hat trademarks that are
-# incorporated in the source code or documentation are not subject to the GNU
-# General Public License and may only be used or replicated with the express
-# permission of Red Hat, Inc.
+# GNU General Public License along with this program; if not, write to the
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.  Any Red Hat trademarks that are incorporated in the
+# source code or documentation are not subject to the GNU General Public
+# License and may only be used or replicated with the express permission of
+# Red Hat, Inc.
 #
 
 from __future__ import print_function
@@ -348,7 +349,7 @@ class ModuleCommand(commands.Command):
     SUBCMDS_NOT_REQUIRED_ARG = {ListSubCommand}
 
     aliases = ("module",)
-    summary = _("Interact with Modules. WARNING: modularity is deprecated, and functionality will be removed in a future release of DNF5.")
+    summary = _("Interact with Modules.")
 
     def __init__(self, cli):
         super(ModuleCommand, self).__init__(cli)
@@ -388,7 +389,6 @@ class ModuleCommand(commands.Command):
                             help=_("Module specification"))
 
     def configure(self):
-        logger.warning(_("WARNING: modularity is deprecated, and functionality will be removed in a future release of DNF5."))
         try:
             self.subcmd = self._subcmd_name2obj[self.opts.subcmd[0]]
         except (CliError, KeyError):
