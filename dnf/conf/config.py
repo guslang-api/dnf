@@ -251,9 +251,8 @@ class MainConf(BaseConfig):
         self.tempfiles = []
 
     def __del__(self):
-        if hasattr(self, 'tempfiles'):
-            for file_name in self.tempfiles:
-                os.unlink(file_name)
+        for file_name in self.tempfiles:
+            os.unlink(file_name)
 
     @property
     def get_reposdir(self):
@@ -288,7 +287,7 @@ class MainConf(BaseConfig):
                 temp_fd, temp_path = tempfile.mkstemp(prefix='dnf-downloaded-config-')
                 self.tempfiles.append(temp_path)
                 try:
-                    downloader.downloadURL(self._config, val, temp_fd)
+                    downloader.downloadURL(None, val, temp_fd)
                 except RuntimeError as e:
                     raise dnf.exceptions.ConfigError(
                         _('Configuration file URL "{}" could not be downloaded:\n'

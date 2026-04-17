@@ -73,7 +73,7 @@ class Output(object):
     def __init__(self, base, conf):
         self.conf = conf
         self.base = base
-        self.term = dnf.cli.term.Term(color=base.conf.color)
+        self.term = dnf.cli.term.Term()
         self.progress = None
 
     def _banner(self, col_data, row):
@@ -205,7 +205,7 @@ class Output(object):
                     full_columns.append(col[-1][0])
                 else:
                     full_columns.append(columns[d] + 1)
-            full_columns[0] += len(indent) * 2
+            full_columns[0] += len(indent)
             # if possible, try to keep default width (usually 80 columns)
             default_width = self.term.columns
             if sum(full_columns) > default_width:
@@ -1548,12 +1548,7 @@ Transaction Summary
             else:
                 name = self._pwd_ui_username(transaction.loginuid, 24)
             name = ucd(name)
-            # TRANSLATORS: This is the time format for dnf history list.
-            # You can change it but do it with caution because the output
-            # must be no longer than 16 characters. Format specifiers:
-            # %Y - year number (4 digits), %m - month (00-12), %d - day
-            # number (01-31), %H - hour (00-23), %M - minute (00-59).
-            tm = time.strftime(_("%Y-%m-%d %H:%M"),
+            tm = time.strftime("%Y-%m-%d %H:%M",
                                time.localtime(transaction.beg_timestamp))
             num, uiacts = self._history_uiactions(transaction.data())
             name = fill_exact_width(name, name_width, name_width)
@@ -1776,6 +1771,20 @@ Transaction Summary
                     print(_("Command Line   :"), cmdline)
             else:
                 print(_("Command Line   :"), old.cmdline)
+
+        def print_persistence(persistence):
+            if old.persistence == libdnf.transaction.TransactionPersistence_PERSIST:
+                persistence_str = "Persist"
+            elif old.persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
+                persistence_str = "Transient"
+            else:
+                persistence_str = "Unknown"
+            print(_("Persistence    :"), persistence_str)
+        if isinstance(old.persistence, (list, tuple)):
+            for persistence in old.persistence:
+                print_persistence(persistence)
+        else:
+            print_persistence(old.persistence)
 
         if old.comment is not None:
             if isinstance(old.comment, (list, tuple)):

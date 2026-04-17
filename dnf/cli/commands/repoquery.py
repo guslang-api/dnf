@@ -41,15 +41,15 @@ logger = logging.getLogger('dnf')
 
 QFORMAT_DEFAULT = '%{name}-%{epoch}:%{version}-%{release}.%{arch}'
 # matches %[-][dd]{attr}
-QFORMAT_MATCH = re.compile(r'%(-?\d*?){([:\w]+?)}')
-ALLOWED_QUERY_TAGS = ('name', 'arch', 'epoch', 'version', 'release',
-                      'reponame', 'repoid', 'from_repo', 'evr', 'debug_name',
-                      'source_name', 'source_debug_name', 'installtime',
-                      'buildtime', 'size', 'downloadsize', 'installsize',
-                      'provides', 'requires', 'obsoletes', 'conflicts',
-                      'suggests', 'recommends', 'enhances', 'supplements',
-                      'sourcerpm', 'description', 'summary', 'license', 'url',
-                      'reason', 'group', 'vendor', 'packager',)
+QFORMAT_MATCH = re.compile(r'%(-?\d*?){([:.\w]+?)}')
+
+QUERY_TAGS = """\
+name, arch, epoch, version, release, reponame (repoid), from_repo, evr,
+debug_name, source_name, source_debug_name,
+installtime, buildtime, size, downloadsize, installsize,
+provides, requires, obsoletes, conflicts, sourcerpm,
+description, summary, license, url, reason"""
+
 OPTS_MAPPING = {
     'conflicts': 'conflicts',
     'enhances': 'enhances',
@@ -68,16 +68,13 @@ def rpm2py_format(queryformat):
     def fmt_repl(matchobj):
         fill = matchobj.groups()[0]
         key = matchobj.groups()[1]
-        key = key.lower()  # we allow both uppercase and lowercase variants
-        if key not in ALLOWED_QUERY_TAGS:
-            return brackets(matchobj.group())
         if fill:
             if fill[0] == '-':
                 fill = '>' + fill[1:]
             else:
                 fill = '<' + fill
             fill = ':' + fill
-        return '{0.' + key + fill + "}"
+        return '{0.' + key.lower() + fill + "}"
 
     def brackets(txt):
         return txt.replace('{', '{{').replace('}', '}}')
@@ -327,24 +324,13 @@ class RepoQueryCommand(commands.Command):
         if self.opts.querychangelogs:
             demands.changelogs = True
 
-        if self.opts.queryfilelist or self.opts.file or dnf.util._is_file_pattern_present(self.opts.key):
-            self.base.conf.optional_metadata_types += ["filelists"]
-
     def build_format_fn(self, opts, pkg):
         if opts.querychangelogs:
             out = []
             out.append('Changelog for %s' % str(pkg))
             for chlog in pkg.changelogs:
                 dt = chlog['timestamp']
-                out.append('* %s %s\n%s\n' % (
-                    # TRANSLATORS: This is the date format for a changelog
-                    # in dnf repoquery. You are encouraged to change it
-                    # according to the requirements of your language. Format
-                    # specifiers used here: %a - abbreviated weekday name in
-                    # your language, %b - abbreviated month name in the correct
-                    # grammatical form, %d - day number (01-31), %Y - year
-                    # number (4 digits).
-                                              dt.strftime(_("%a %b %d %Y")),
+                out.append('* %s %s\n%s\n' % (dt.strftime("%a %b %d %Y"),
                                               dnf.i18n.ucd(chlog['author']),
                                               dnf.i18n.ucd(chlog['text'])))
             return '\n'.join(out)
@@ -448,7 +434,7 @@ class RepoQueryCommand(commands.Command):
 
     def run(self):
         if self.opts.querytags:
-            print("\n".join(sorted(ALLOWED_QUERY_TAGS)))
+            print(QUERY_TAGS)
             return
 
         self.cli._populate_update_security_filter(self.opts)

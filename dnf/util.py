@@ -635,14 +635,6 @@ def _name_unset_wrapper(input_name):
     return input_name if input_name else _("<name-unset>")
 
 
-def _is_file_pattern_present(specs):
-    for spec in specs:
-        subj = dnf.subject.Subject(spec)
-        if subj._filename_pattern:
-            return True
-    return False
-
-
 class _BootcSystem:
     usr = "/usr"
     CLONE_NEWNS = 0x00020000  # defined in linux/include/uapi/linux/sched.h

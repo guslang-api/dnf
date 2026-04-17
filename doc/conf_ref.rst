@@ -423,18 +423,6 @@ configuration file by your distribution to override the DNF defaults.
 
     Command-line option: :ref:`--obsoletes <obsoletes_option-label>`
 
-.. _optional_metadata_types-label:
-
-``optional_metadata_types``
-    :ref:`list <list-label>`
-
-    List of metadata types to be loaded in addition to ``primary``, ``modules``, ``comps``, ``updateinfo`` and ``presto``,
-    which are loaded always.
-
-    Note that the list can be extended by individual commands to explicitly request loading specific metadata type.
-
-    Currently only ``filelists`` value is supported. Default is an empty list.
-
 .. _persistdir-label:
 
 ``persistdir``
@@ -549,7 +537,6 @@ configuration file by your distribution to override the DNF defaults.
     nocontexts    RPMTRANS_FLAG_NOCONTEXTS
     nocaps        RPMTRANS_FLAG_NOCAPS
     nocrypto      RPMTRANS_FLAG_NOFILEDIGEST
-    deploops      RPMTRANS_FLAG_DEPLOOPS
     ============  ===========================
 
     The ``nocrypto`` option will also set the ``_RPMVSF_NOSIGNATURES`` and
@@ -566,6 +553,15 @@ configuration file by your distribution to override the DNF defaults.
     :ref:`boolean <boolean-label>`
 
     Set this to False to disable the automatic running of ``group upgrade`` when running the ``upgrade`` command. Default is ``True`` (perform the operation).
+
+.. _usr_drift_protected_paths-label:
+
+``usr_drift_protected_paths``
+    :ref:`list <list-label>`
+
+    List of paths that are likely to cause problems when their contents drift with respect to ``/usr``, e.g. ``/etc/pam.d/*``. If a transient transaction would modify these paths, DNF aborts the operation and prints an error. Supports globs. Defaults to ``glob:/etc/dnf/usr-drift-protected-paths.d/*.conf``. So a list of paths can be protected by creating a ``.conf`` file in ``/etc/dnf/usr-drift-protected-paths.d/`` containing one path (or glob pattern) per line.
+
+    When using ``persistence=transient`` on bootc systems, a transient overlay is created on ``/usr``, and any changes DNF makes to ``/usr`` will be discarded on reboot. However, other paths such as ``/etc`` and ``/var`` are (often) not backed by a transient overlay, so changes to them will persist across reboots. Usually, this "filesystem drift" is fine, but it can cause problems in certain situations. For example, a configuration file in ``/etc`` that's shared by multiple packages might reference a ``.so`` file under ``/usr/lib64`` that no longer exists.
 
 .. _varsdir_options-label:
 
@@ -776,14 +772,6 @@ configuration file by your distribution to override the DNF defaults.
     Type of repository metadata. Supported values are: ``rpm-md``.
     Aliases for ``rpm-md``: ``rpm``, ``repomd``, ``rpmmd``, ``yum``, ``YUM``.
 
-=====================================
-Source and debuginfo repository names
-=====================================
-
-For a given repository with an identifier in the form "<ID>-rpms", its corresponding source repository is expected to have an identifier in the form "<ID>-source-rpms" and debuginfo repository an identifier in the form "<ID>-debug-rpms". Otherwise (if the repository identifier doesn't have the "-rpms" suffix), the source repository is expected to have an identifier in the form "<ID>-source" and debuginfo repository an identifier in the form "<ID>-debuginfo".
-
-For example, for repository "fedora", the source repository is "fedora-source" and debuginfo repository is "fedora-debuginfo". For repository "fedora-rpms", the source repository is "fedora-source-rpms" and debuginfo repository is "fedora-debug-rpms".
-
 .. _repo-variables-label:
 
 ================
@@ -879,50 +867,23 @@ configuration.
 ``countme``
     :ref:`boolean <boolean-label>`
 
-    When enabled, one (and only one) HTTP GET request for the metalink file
-    will be selected at random every week to carry a special URL flag.
+    Determines whether a special flag should be added to a single, randomly
+    chosen metalink/mirrorlist query each week.
+    This allows the repository owner to estimate the number of systems
+    consuming it, by counting such queries over a week's time, which is much
+    more accurate than just counting unique IP addresses (which is subject to
+    both overcounting and undercounting due to short DHCP leases and NAT,
+    respectively).
 
-    This flag allows the repository provider to estimate the number of systems
-    consuming the repository, by counting such requests over a week's time.
-    This method is more accurate than just counting unique IP addresses (which
-    is subject to both overcounting and undercounting due to short DHCP leases
-    and NAT, respectively).
-
-    This is *not* an out-of-band HTTP request made for this purpose alone.
-    Only requests initiated by DNF during normal operation, such as to check
-    for metadata updates, can get this flag.
-
-    The flag is a simple "countme=N" parameter appended to the metalink URL
-    where N is an integer representing the age "bucket" this system belongs to.
-    Four buckets are defined, based on how many full weeks have passed since
-    the installation of a system:
-
-    ======  ===============================
-    bucket  system age
-    ======  ===============================
-    1       first week
-    2       first month (2 - 4 weeks)
-    3       first 6 months (5 - 24 weeks)
-    4       more than 6 months (> 24 weeks)
-    ======  ===============================
-
-    This number is meant to help distinguish short-lived (throwaway) machines
-    from long-term installs and get a better picture of how systems are used
-    over time.
-
-    To determine a system's installation time ("epoch"), the ``machine-id(5)``
-    file's modification time is used as the single source of truth.  This file
-    is semantically tied to the system's lifetime as it's typically populated
-    at installation time or during the first boot by an installer tool or init
-    system (such as ``systemd(1)``), respectively, and remains unchanged.
-
-    If the file is empty or missing (such as in containers), the time of the
-    very first request made using the expanded metalink URL (i.e. with any
-    repository variables such as ``$releasever`` substituted) that carried the
-    flag is declared as the epoch.
-
-    If no metalink URL is defined for this repository but a mirrorlist URL is,
-    the latter is used for this purpose instead.
+    The flag is a simple "countme=N" parameter appended to the metalink and
+    mirrorlist URL, where N is an integer representing the "longevity" bucket
+    this system belongs to.
+    The following 4 buckets are defined, based on how many full weeks have
+    passed since the beginning of the week when this system was installed: 1 =
+    first week, 2 = first month (2-4 weeks), 3 = six months (5-24 weeks) and 4
+    = more than six months (> 24 weeks).
+    This information is meant to help distinguish short-lived installs from
+    long-term ones, and to gather other statistics about system lifecycle.
 
     Default is False.
 
@@ -933,7 +894,7 @@ configuration.
 
     When enabled, DNF will save bandwidth by downloading much smaller delta RPM
     files, rebuilding them to RPM locally. However, this is quite CPU and I/O
-    intensive. Default is False. It requires `/usr/bin/applydeltarpm` on the system.
+    intensive. Default is True.
 
 .. _deltarpm_percentage-label:
 
@@ -966,10 +927,7 @@ configuration.
 ``fastestmirror``
     :ref:`boolean <boolean-label>`
 
-    If enabled, TCP socket latency is used to find the closest available mirror.
-    A mirror is then selected at random with less than twice the lowest latency for load balancing purposes.
-    This overrides the order provided by the mirrorlist/metalink file itself,
-    and does not take into consideration mirrorlist parameters such as mirror bandwidth nor preferred mirrors for client IP addresses.
+    If enabled a metric is used to find the fastest available mirror. This overrides the order provided by the mirrorlist/metalink file itself. This file is often dynamically generated by the server to provide the best download speeds and enabling fastestmirror overrides this. The default is False.
 
 .. _gpgcheck-label:
 

@@ -40,7 +40,7 @@ extensions and plugins.
 Plugins can modify or extend features of DNF or provide additional CLI commands on top of those
 mentioned below. If you know the name of such a command (including commands mentioned below), you
 may find/install the package which provides it using the appropriate virtual provide in the form of
-``dnf-command(<alias>)``, where ``<alias>`` is the name of the command; e.g. ``dnf install
+``dnf-command(<alias>)``, where ``<alias>`` is the name of the command; e.g.``dnf install
 'dnf-command(versionlock)'`` installs a ``versionlock`` plugin. This approach also applies to
 specifying dependencies of packages that require a particular DNF command.
 
@@ -164,7 +164,7 @@ Options
 
 .. _disableexcludes-label:
 
-``--disableexcludes=[all|main|<repoid>], --disableexcludepkgs=[all|main|<repoid>]``
+``--disableexcludes={all|main|<repoid>}, --disableexcludepkgs={all|main|<repoid>}``
     Disable ``excludepkgs`` and ``includepkgs`` configuration options. Takes one of the following three options:
 
     * ``all``, disables all ``excludepkgs`` and ``includepkgs`` configurations
@@ -525,9 +525,9 @@ Autoremove Command
     package directly, or a ``@<group-spec>``, which specifies an (environment) group which contains
     it. It also removes any dependencies that are no longer needed.
 
-There are also a few specific autoremove commands ``autoremove-n``, ``autoremove-na`` and
-``autoremove-nevra`` that allow the specification of an exact argument in the NEVRA
-(name-epoch:version-release.architecture) format.
+    There are also a few specific autoremove commands ``autoremove-n``, ``autoremove-na`` and
+    ``autoremove-nevra`` that allow the specification of an exact argument in the NEVRA
+    (name-epoch:version-release.architecture) format.
 
 This command by default does not force a sync of expired metadata. See also :ref:`\metadata_synchronization-label`.
 
@@ -557,6 +557,7 @@ Check-Update Command
 
 
 ``dnf [options] check-update [--changelogs] [<package-file-spec>...]``
+
     Non-interactively checks if updates of the specified packages are available. If no ``<package-file-spec>`` is given, checks whether any updates at all are available for your system. DNF exit code will be 100 when there are updates available and a list of the updates will be printed, 0 if not and 1 if an error occurs. If ``--changelogs`` option is specified, also changelog delta of packages about to be updated is printed.
 
     Please note that having a specific newer version available for an installed package (and reported by ``check-update``) does not imply that subsequent ``dnf upgrade`` will install it. The difference is that ``dnf upgrade`` has restrictions (like package dependencies being satisfied) to take into account.
@@ -657,7 +658,7 @@ Groups are virtual collections of packages. DNF keeps track of groups that the u
 ``dnf [options] group install [--with-optional] <group-spec>...``
     Mark the specified group installed and install packages it contains. Also
     include `optional` packages of the group if ``--with-optional`` is
-    specified. All `Mandatory` and `Default` packages will be installed whenever possible.
+    specified. All `mandatory` and `Default` packages will be installed whenever possible.
     Conditional packages are installed if they meet their requirement.
     If the group is already (partially) installed, the command installs the missing packages from the group.
     Depending on the value of :ref:`obsoletes configuration option <obsoletes_conf_option-label>` group installation takes obsoletes into account.
@@ -736,7 +737,7 @@ transactions and act according to this information (assuming the
     * Reinstall (R): a package was reinstalled with the same version
     * Reason change (C): a package was kept in the system but its reason for being installed changed
 
-    The "Altered" column lists the number of actions taken in each transaction, possibly followed by one or two of the following symbols:
+    The "Altered" column lists the number of actions taken in each transaction, possibly followed by one or two the following symbols:
 
     * ``>``: The RPM database was changed, outside DNF, after the transaction
     * ``<``: The RPM database was changed, outside DNF, before the transaction
@@ -875,11 +876,11 @@ Install Command
     some older version is being obsoleted. It creates a split in the upgrade-path and both ways
     are considered correct, the resulting package is picked simply by lexicographical order.
 
-There are also a few specific install commands ``install-n``, ``install-na`` and
-``install-nevra`` that allow the specification of an exact argument in the NEVRA format. As a consequence, <spec>
-will be not matched with provides and file provides.
+    There are also a few specific install commands ``install-n``, ``install-na`` and
+    ``install-nevra`` that allow the specification of an exact argument in the NEVRA format. As a consequence, <spec>
+    will be not matched with provides and file provides.
 
-See also :ref:`\configuration_files_replacement_policy-label`.
+    See also :ref:`\configuration_files_replacement_policy-label`.
 
 .. _install_examples-label:
 
@@ -1171,7 +1172,7 @@ Provides Command
 
     4. If this last step also fails, DNF returns "Error: No Matches found".
 
-This command by default does not force a sync of expired metadata. See also :ref:`\metadata_synchronization-label`.
+    This command by default does not force a sync of expired metadata. See also :ref:`\metadata_synchronization-label`.
 
 .. _reinstall_command-label:
 
@@ -1210,9 +1211,9 @@ Remove Command
 ``dnf [options] remove --oldinstallonly``
     Removes old installonly packages, keeping only latest versions and version of running kernel.
 
-There are also a few specific remove commands ``remove-n``, ``remove-na`` and ``remove-nevra``
-that allow the specification of an exact argument in the NEVRA format. As a consequence, <spec>
-will be not matched with provides and file provides.
+    There are also a few specific remove commands ``remove-n``, ``remove-na`` and ``remove-nevra``
+    that allow the specification of an exact argument in the NEVRA format. As a consequence, <spec>
+    will be not matched with provides and file provides.
 
 Remove Examples
 ---------------
@@ -1224,9 +1225,9 @@ Remove Examples
     Remove packages not present in any repository, but don't remove the ``tito``
     and ``acpi`` packages (they still might be removed if they depend on some of the removed packages).
 
-``dnf remove --duplicates``
-    Remove older versions of duplicated packages (an equivalent of yum's `package-cleanup --cleandups`).
+Remove older versions of duplicated packages (an equivalent of yum's `package-cleanup --cleandups`)::
 
+    dnf remove --duplicates
 
 .. _repoinfo_command-label:
 
@@ -1236,8 +1237,8 @@ Repoinfo Command
 
 | Command: ``repoinfo``
 
-An alias for the :ref:`repolist <repolist_command-label>` command
-that provides more detailed information like ``dnf repolist -v``.
+    An alias for the :ref:`repolist <repolist_command-label>` command
+    that provides more detailed information like ``dnf repolist -v``.
 
 .. _repolist_command-label:
 
@@ -1274,9 +1275,9 @@ Repoquery Command
 ``dnf [options] repoquery --querytags``
     Provides the list of tags recognized by the \-\ :ref:`-queryformat <queryformat_repoquery-label>` repoquery option.
 
-There are also a few specific repoquery commands ``repoquery-n``, ``repoquery-na`` and ``repoquery-nevra``
-that allow the specification of an exact argument in the NEVRA format (does not affect arguments of options like --whatprovides <arg>, ...).
-As a consequence, <spec> will be not matched with file provides.
+    There are also a few specific repoquery commands ``repoquery-n``, ``repoquery-na`` and ``repoquery-nevra``
+    that allow the specification of an exact argument in the NEVRA format (does not affect arguments of options like --whatprovides <arg>, ...).
+    As a consequence, <spec> will be not matched with file provides.
 
 Select Options
 --------------
@@ -1495,41 +1496,52 @@ are displayed in the standard NEVRA notation.
     resolve capabilities to originating package(s).
 
 
-Repoquery Examples
-------------------
+Examples
+--------
 
-``dnf repoquery 'light*'``
-    Display NEVRAs of all available packages matching ``light*``
+Display NEVRAs of all available packages matching ``light*``::
 
-``dnf repoquery-na 'light*.noarch'``
-    Display NEVRAs of all available packages matching name ``light*`` and architecture ``noarch`` (accepts only arguments in the "<name>.<arch>" format)
+    dnf repoquery 'light*'
 
-``dnf repoquery --requires lighttpd``
-    Display requires of all lighttpd packages
+Display NEVRAs of all available packages matching name ``light*`` and architecture ``noarch`` (accepts only arguments in the "<name>.<arch>" format)::
 
-``dnf repoquery --requires python --resolve``
-    Display packages providing the requires of python packages
+    dnf repoquery-na 'light*.noarch'
 
-``dnf repoquery --source lighttpd``
-    Display source rpm of lighttpd package
+Display requires of all lighttpd packages::
 
-``dnf repoquery --file /etc/lighttpd/lighttpd.conf``
-    Display package name that owns the given file
+    dnf repoquery --requires lighttpd
 
-``dnf repoquery --queryformat '%{name}.%{arch} : %{reponame}' lighttpd``
-    Display name, architecture and the containing repository of all lighttpd packages
+Display packages providing the requires of python packages::
 
-``dnf repoquery --whatprovides webserver``
-    Display all available packages providing "webserver"
+    dnf repoquery --requires python --resolve
 
-``dnf repoquery --whatprovides webserver --arch i686``
-    Display all available packages providing "webserver" but only for "i686" architecture
+Display source rpm of ligttpd package::
 
-``dnf repoquery --duplicates``
-    Display duplicate packages
+    dnf repoquery --source lighttpd
 
-``dnf repoquery --disablerepo="*" --enablerepo="*-source" --arch=src --whatrequires <provide>``
-    Display source packages that require a <provide> for a build
+Display package name that owns the given file::
+
+    dnf repoquery --file /etc/lighttpd/lighttpd.conf
+
+Display name, architecture and the containing repository of all lighttpd packages::
+
+    dnf repoquery --queryformat '%{name}.%{arch} : %{reponame}' lighttpd
+
+Display all available packages providing "webserver"::
+
+    dnf repoquery --whatprovides webserver
+
+Display all available packages providing "webserver" but only for "i686" architecture::
+
+    dnf repoquery --whatprovides webserver --arch i686
+
+Display duplicate packages::
+
+    dnf repoquery --duplicates
+
+Display source packages that require a <provide> for a build::
+
+    dnf repoquery --disablerepo="*" --enablerepo="*-source" --arch=src --whatrequires <provide>
 
 .. _repository_packages_command-label:
 
@@ -1629,7 +1641,7 @@ Search Command
 ``dnf [options] search [--all] <keywords>...``
     Search package metadata for keywords. Keywords are matched as case-insensitive substrings, globbing is supported.
     By default lists packages that match all requested keys (AND operation). Keys are searched in package names and summaries.
-    If the ``--all`` option is used, lists packages that match at least one of the keys (an OR operation).
+    If the "--all" option is used, lists packages that match at least one of the keys (an OR operation).
     In addition the keys are searched in the package descriptions and URLs.
     The result is sorted from the most relevant results to the least.
 
@@ -1677,7 +1689,7 @@ Swap Command
 
 ``dnf [options] swap <remove-spec> <install-spec>``
 
-    Remove ``remove-spec`` and install ``install-spec`` in one transaction. Each ``<spec>`` can be either a
+    Remove spec and install spec in one transaction. Each ``<spec>`` can be either a
     :ref:`<package-spec> <specifying_packages-label>`, which specifies a package directly, or a
     ``@<group-spec>``, which specifies an (environment) group which contains it. Automatic
     conflict solving is provided in DNF by the --allowerasing option that provides the functionality of the swap

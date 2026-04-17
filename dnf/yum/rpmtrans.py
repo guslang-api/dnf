@@ -160,7 +160,8 @@ class LoggingTransactionDisplay(TransactionDisplay):
         self.rpm_logger.log(dnf.logging.SUBDEBUG, msg)
 
     def scriptout(self, msgs):
-        self.rpm_logger.info(ucd(msgs))
+        if msgs:
+            self.rpm_logger.info(ucd(msgs))
 
 
 class RPMTransaction(object):
@@ -235,8 +236,6 @@ class RPMTransaction(object):
 
     def _scriptout(self):
         msgs = self._scriptOutput()
-        if not msgs:
-            return
         for display in self.displays:
             display.scriptout(msgs)
         self.base.history.log_scriptlet_output(msgs)
@@ -398,8 +397,6 @@ class RPMTransaction(object):
             display.error(msg)
 
     def _unpackError(self, key):
-        self._scriptout()
-
         transaction_list = self._extract_cbkey(key)
         msg = "Error unpacking rpm package %s" % transaction_list[0].pkg
         for display in self.displays:

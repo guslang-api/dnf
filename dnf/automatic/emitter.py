@@ -109,7 +109,6 @@ class EmailEmitter(Emitter):
         email_to = self._conf.email_to
         email_host = self._conf.email_host
         email_port = self._conf.email_port
-        email_tls = self._conf.email_tls
         message['Date'] = email.utils.formatdate()
         message['From'] = email_from
         message['Subject'] = subj
@@ -118,12 +117,7 @@ class EmailEmitter(Emitter):
 
         # Send the email
         try:
-            if email_tls == 'yes':
-                smtp = smtplib.SMTP_SSL(email_host, email_port, timeout=300)
-            else:
-                smtp = smtplib.SMTP(email_host, email_port, timeout=300)
-                if email_tls == 'starttls':
-                    smtp.starttls()
+            smtp = smtplib.SMTP(email_host, email_port, timeout=300)
             smtp.sendmail(email_from, email_to, message.as_string())
             smtp.close()
         except OSError as exc:

@@ -118,6 +118,7 @@ class Base(object):
         self._update_security_options = {}
         self._allow_erasing = False
         self._repo_set_imported_gpg_keys = set()
+        self._persistence = libdnf.transaction.TransactionPersistence_UNKNOWN
         self.output = None
 
     def __enter__(self):
@@ -139,10 +140,9 @@ class Base(object):
 
     def _add_repo_to_sack(self, repo):
         repo.load()
-        mdload_flags = dict(load_presto=repo.deltarpm,
+        mdload_flags = dict(load_filelists=True,
+                            load_presto=repo.deltarpm,
                             load_updateinfo=True)
-        if 'filelists' in self.conf.optional_metadata_types:
-            mdload_flags["load_filelists"] = True
         if repo.load_metadata_other:
             mdload_flags["load_other"] = True
         try:
@@ -474,10 +474,9 @@ class Base(object):
             for repo in self.repos.iter_enabled():
                 try:
                     repo._repo.loadCache(throwExcept=True, ignoreMissing=True)
-                    mdload_flags = dict(load_presto=repo.deltarpm,
+                    mdload_flags = dict(load_filelists=True,
+                                        load_presto=repo.deltarpm,
                                         load_updateinfo=True)
-                    if 'filelists' in self.conf.optional_metadata_types:
-                        mdload_flags["load_filelists"] = True
                     if repo.load_metadata_other:
                         mdload_flags["load_other"] = True
 
@@ -634,8 +633,7 @@ class Base(object):
                         'test': rpm.RPMTRANS_FLAG_TEST,
                         'justdb': rpm.RPMTRANS_FLAG_JUSTDB,
                         'nocontexts': rpm.RPMTRANS_FLAG_NOCONTEXTS,
-                        'nocrypto': rpm.RPMTRANS_FLAG_NOFILEDIGEST,
-                        'deploops': rpm.RPMTRANS_FLAG_DEPLOOPS}
+                        'nocrypto': rpm.RPMTRANS_FLAG_NOFILEDIGEST}
     if hasattr(rpm, 'RPMTRANS_FLAG_NOCAPS'):
         # Introduced in rpm-4.14
         _TS_FLAGS_TO_RPM['nocaps'] = rpm.RPMTRANS_FLAG_NOCAPS
@@ -973,7 +971,7 @@ class Base(object):
                 else:
                     rpmdb_version = old.end_rpmdb_version
 
-                self.history.beg(rpmdb_version, [], [], cmdline)
+                self.history.beg(rpmdb_version, [], [], cmdline=cmdline, persistence=self._persistence)
                 self.history.end(rpmdb_version)
             self._plugins.run_pre_transaction()
             self._plugins.run_transaction()
@@ -1124,7 +1122,8 @@ class Base(object):
                 cmdline = ' '.join(self.cmds)
 
             comment = self.conf.comment if self.conf.comment else ""
-            tid = self.history.beg(rpmdbv, using_pkgs, [], cmdline, comment)
+            tid = self.history.beg(rpmdbv, using_pkgs, [], cmdline=cmdline,
+                                   comment=comment, persistence=self._persistence)
 
         if self.conf.reset_nice:
             onice = os.nice(0)
@@ -1185,7 +1184,7 @@ class Base(object):
 
         # sync up what just happened versus what is in the rpmdb
         if not self._ts.isTsFlagSet(rpm.RPMTRANS_FLAG_TEST):
-            self._verify_transaction()
+            self._verify_transaction(cb.verify_tsi_package)
 
         return tid
 
@@ -1326,10 +1325,7 @@ class Base(object):
                                             pkg.location.lstrip("/"))
                 else:
                     location = os.path.join(pkg.repo.pkgdir, pkg.location.lstrip("/"))
-                try:
-                    shutil.copy(location, self.conf.destdir)
-                except shutil.SameFileError:
-                    pass
+                shutil.copy(location, self.conf.destdir)
 
     def add_remote_rpms(self, path_list, strict=True, progress=None):
         # :api
@@ -2276,7 +2272,7 @@ class Base(object):
             sltrs = subject._get_best_selectors(self, solution=solution,
                                                 obsoletes=self.conf.obsoletes, reports=True)
             if not sltrs:
-                logger.info(_('No match for argument: %s'), pkg_spec)
+                logger.info(_('No package %s installed.'), pkg_spec)
                 return 0
             for sltr in sltrs:
                 self._goal.distupgrade(select=sltr)
@@ -2646,7 +2642,7 @@ class Base(object):
                     'package.\n'
                     'Check that the correct key URLs are configured for '
                     'this repository.') % repo.name
-            raise dnf.exceptions.InvalidInstalledGPGKeyError(_prov_key_data(msg))
+            raise dnf.exceptions.Error(_prov_key_data(msg))
 
         # Check if the newly installed keys helped
         result, errmsg = self._sig_check_pkg(po)
@@ -2843,7 +2839,7 @@ class Base(object):
             return False
 
         # List taken from DNF needs-restarting
-        need_reboot = frozenset(('kernel', 'kernel-core', 'kernel-rt', 'glibc',
+        need_reboot = frozenset(('kernel', 'kernel-rt', 'glibc',
                                  'linux-firmware', 'systemd', 'dbus',
                                  'dbus-broker', 'dbus-daemon', 'microcode_ctl'))
         changed_pkgs = self.transaction.install_set | self.transaction.remove_set

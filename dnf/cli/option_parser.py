@@ -110,7 +110,10 @@ class OptionParser(argparse.ArgumentParser):
         """ Parse setopts arguments and put them into main_<setopts>
             and repo_<setopts>."""
         def __call__(self, parser, namespace, values, opt_str):
-            vals = values.split('=', maxsplit=1)
+            vals = values.split('=')
+            if len(vals) > 2:
+                logger.warning(_("Setopt argument has multiple values: %s"), values)
+                return
             if len(vals) < 2:
                 logger.warning(_("Setopt argument has no value: %s"), values)
                 return
@@ -182,7 +185,7 @@ class OptionParser(argparse.ArgumentParser):
                                  help=_("show {prog} version and exit").format(
                                      prog=dnf.util.MAIN_PROG_UPPER))
         general_grp.add_argument("--installroot", help=_("set install root"),
-                                 metavar='PATH]')
+                                 metavar='PATH')
         general_grp.add_argument("--nodocs", action="store_const", const=['nodocs'], dest='tsflags',
                                  help=_("do not install documentations"))
         general_grp.add_argument("--noplugins", action="store_false",
@@ -191,11 +194,11 @@ class OptionParser(argparse.ArgumentParser):
         general_grp.add_argument("--enableplugin", dest="enableplugin",
                                  default=[], action=self._SplitCallback,
                                  help=_("enable plugins by name"),
-                                 metavar='PLUGIN]')
+                                 metavar='PLUGIN')
         general_grp.add_argument("--disableplugin", dest="disableplugin",
                                  default=[], action=self._SplitCallback,
                                  help=_("disable plugins by name"),
-                                 metavar='PLUGIN]')
+                                 metavar='PLUGIN')
         general_grp.add_argument("--releasever", default=None,
                                  help=_("override the value of $releasever"
                                         " in config and repo files"))

@@ -299,7 +299,7 @@ class ModuleCommand(commands.Command):
     class ProvidesSubCommand(SubCommand):
 
         aliases = ("provides", )
-        summary = _('locate a module the modular packages belong to')
+        summary = _('list modular packages')
 
         def configure(self):
             demands = self.cli.demands

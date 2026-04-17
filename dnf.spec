@@ -2,17 +2,15 @@
 %define __cmake_in_source_build 1
 
 # default dependencies
-%global hawkey_version 0.74.0
+%global hawkey_version 0.75.0
 %global libcomps_version 0.1.8
 %global libmodulemd_version 2.9.3
 %global rpm_version 4.14.0
 
 # conflicts
-%global conflicts_dnf_plugins_core_version 4.7.0
+%global conflicts_dnf_plugins_core_version 4.0.26
 %global conflicts_dnf_plugins_extras_version 4.0.4
 %global conflicts_dnfdaemon_version 0.3.19
-
-%bcond dnf5_obsoletes_dnf %[0%{?fedora} > 40 || 0%{?rhel} > 10]
 
 # override dependencies for rhel 7
 %if 0%{?rhel} == 7
@@ -21,6 +19,10 @@
 
 %if 0%{?rhel} == 7 && 0%{?centos}
     %global rpm_version 4.11.3-25.el7.centos.1
+%endif
+
+%if 0%{?rhel} == 9
+    %global hawkey_version 0.69.0-13
 %endif
 
 # override dependencies for fedora 26
@@ -34,6 +36,7 @@
 # level=full    -> deploy all compat symlinks (conflicts with yum < 4)
 # level=minimal -> deploy a subset of compat symlinks only
 #                  (no conflict with yum >= 3.4.3-505)*
+# level=preview -> minimal level with altered paths (no conflict with yum < 4)
 # *release 505 renamed /usr/bin/yum to /usr/bin/yum-deprecated
 %global yum_compat_level full
 %global yum_subpackage_name yum
@@ -47,6 +50,7 @@
     %endif
 %endif
 %if 0%{?rhel} && 0%{?rhel} <= 7
+    %global yum_compat_level preview
     %global yum_subpackage_name nextgen-yum4
 %endif
 
@@ -65,34 +69,50 @@
 It supports RPMs, modules and comps groups & environments.
 
 Name:           dnf
-Version:        4.24.0
+Version:        4.14.0
 Release:        1%{?dist}
 Summary:        %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
-License:        GPL-2.0-or-later AND GPL-1.0-only
+License:        GPLv2+
 URL:            https://github.com/rpm-software-management/dnf
 Source0:        %{url}/archive/%{version}/%{name}-%{version}.tar.gz
 BuildArch:      noarch
-BuildRequires:  cmake >= 3.5.0
+BuildRequires:  cmake
 BuildRequires:  gettext
 # Documentation
 BuildRequires:  systemd
-%if 0%{?fedora} > 40 || 0%{?rhel} > 10
-BuildRequires:  bash-completion-devel
-%else
 BuildRequires:  bash-completion
-%endif
-Requires:       coreutils
 BuildRequires:  %{_bindir}/sphinx-build-3
 Requires:       python3-%{name} = %{version}-%{release}
 %if 0%{?rhel} && 0%{?rhel} <= 7
 Requires:       python-dbus
 Requires:       %{_bindir}/sqlite3
-%elif 0%{?fedora}
-Recommends:     (%{_bindir}/sqlite3 if (bash-completion and python3-dnf-plugins-core))
 %else
 Recommends:     (python3-dbus if NetworkManager)
 %endif
+Provides:       dnf-command(alias)
+Provides:       dnf-command(autoremove)
+Provides:       dnf-command(check-update)
+Provides:       dnf-command(clean)
+Provides:       dnf-command(distro-sync)
+Provides:       dnf-command(downgrade)
+Provides:       dnf-command(group)
+Provides:       dnf-command(history)
+Provides:       dnf-command(info)
+Provides:       dnf-command(install)
+Provides:       dnf-command(list)
+Provides:       dnf-command(makecache)
+Provides:       dnf-command(mark)
+Provides:       dnf-command(provides)
+Provides:       dnf-command(reinstall)
+Provides:       dnf-command(remove)
+Provides:       dnf-command(repolist)
+Provides:       dnf-command(repoquery)
+Provides:       dnf-command(repository-packages)
+Provides:       dnf-command(search)
+Provides:       dnf-command(updateinfo)
+Provides:       dnf-command(upgrade)
+Provides:       dnf-command(upgrade-to)
 Conflicts:      python3-dnf-plugins-core < %{conflicts_dnf_plugins_core_version}
 Conflicts:      python3-dnf-plugins-extras-common < %{conflicts_dnf_plugins_extras_version}
 
@@ -101,9 +121,7 @@ Conflicts:      python3-dnf-plugins-extras-common < %{conflicts_dnf_plugins_extr
 
 %package data
 Summary:        Common data and configuration files for DNF
-%if %{with dnf5_obsoletes_dnf}
-Requires:       /etc/dnf/dnf.conf
-%endif
+Requires:       libreport-filesystem
 Obsoletes:      %{name}-conf <= %{version}-%{release}
 Provides:       %{name}-conf = %{version}-%{release}
 
@@ -134,11 +152,11 @@ BuildRequires:  python3-libcomps >= %{libcomps_version}
 BuildRequires:  python3-libdnf
 BuildRequires:  libmodulemd >= %{libmodulemd_version}
 Requires:       libmodulemd >= %{libmodulemd_version}
+BuildRequires:  python3-gpg
+Requires:       python3-gpg
 Requires:       %{name}-data = %{version}-%{release}
 %if 0%{?fedora}
-%if 0%{?fedora} < 40
 Recommends:     deltarpm
-%endif
 # required for DNSSEC main.gpgkey_dns_verification https://dnf.readthedocs.io/en/latest/conf_ref.html
 Recommends:     python3-unbound
 %endif
@@ -154,29 +172,6 @@ Requires:       rpm-plugin-systemd-inhibit
 Recommends:     (rpm-plugin-systemd-inhibit if systemd)
 %endif
 Provides:       dnf4 = %{version}-%{release}
-Provides:       dnf-command(alias)
-Provides:       dnf-command(autoremove)
-Provides:       dnf-command(check-update)
-Provides:       dnf-command(clean)
-Provides:       dnf-command(distro-sync)
-Provides:       dnf-command(downgrade)
-Provides:       dnf-command(group)
-Provides:       dnf-command(history)
-Provides:       dnf-command(info)
-Provides:       dnf-command(install)
-Provides:       dnf-command(list)
-Provides:       dnf-command(makecache)
-Provides:       dnf-command(mark)
-Provides:       dnf-command(provides)
-Provides:       dnf-command(reinstall)
-Provides:       dnf-command(remove)
-Provides:       dnf-command(repolist)
-Provides:       dnf-command(repoquery)
-Provides:       dnf-command(repository-packages)
-Provides:       dnf-command(search)
-Provides:       dnf-command(updateinfo)
-Provides:       dnf-command(upgrade)
-Provides:       dnf-command(upgrade-to)
 
 %description -n python3-%{name}
 Python 3 interface to DNF.
@@ -184,7 +179,7 @@ Python 3 interface to DNF.
 %package automatic
 Summary:        %{pkg_summary} - automated upgrades
 BuildRequires:  systemd
-Requires:       python3-%{name} = %{version}-%{release}
+Requires:       %{name} = %{version}-%{release}
 %{?systemd_requires}
 
 %description automatic
@@ -231,20 +226,9 @@ mkdir -p %{buildroot}%{py3pluginpath}/__pycache__/
 mkdir -p %{buildroot}%{_localstatedir}/log/
 mkdir -p %{buildroot}%{_var}/cache/dnf/
 touch %{buildroot}%{_localstatedir}/log/%{name}.log
-%if %{without dnf5_obsoletes_dnf}
 ln -sr %{buildroot}%{_bindir}/dnf-3 %{buildroot}%{_bindir}/dnf
-ln -sr %{buildroot}%{_datadir}/bash-completion/completions/dnf-3 %{buildroot}%{_datadir}/bash-completion/completions/dnf
-for file in %{buildroot}%{_mandir}/man[578]/dnf4[-.]*; do
-    dir=$(dirname $file)
-    filename=$(basename $file)
-    ln -sr $file $dir/${filename/dnf4/dnf}
-done
-%endif
 ln -sr %{buildroot}%{_bindir}/dnf-3 %{buildroot}%{_bindir}/dnf4
-ln -sr %{buildroot}%{_datadir}/bash-completion/completions/dnf-3 %{buildroot}%{_datadir}/bash-completion/completions/dnf4
-%if %{without dnf5_obsoletes_dnf}
 mv %{buildroot}%{_bindir}/dnf-automatic-3 %{buildroot}%{_bindir}/dnf-automatic
-%endif
 rm -vf %{buildroot}%{_bindir}/dnf-automatic-*
 
 # Strict conf distribution
@@ -254,7 +238,6 @@ mv -f %{buildroot}%{confdir}/%{name}-strict.conf %{buildroot}%{confdir}/%{name}.
 rm -vf %{buildroot}%{confdir}/%{name}-strict.conf
 %endif
 
-%if %{without dnf5_obsoletes_dnf}
 # YUM compat layer
 ln -sr  %{buildroot}%{confdir}/%{name}.conf %{buildroot}%{_sysconfdir}/yum.conf
 ln -sr  %{buildroot}%{_bindir}/dnf-3 %{buildroot}%{_bindir}/yum
@@ -264,33 +247,7 @@ ln -sr  %{buildroot}%{pluginconfpath} %{buildroot}%{_sysconfdir}/yum/pluginconf.
 ln -sr  %{buildroot}%{confdir}/protected.d %{buildroot}%{_sysconfdir}/yum/protected.d
 ln -sr  %{buildroot}%{confdir}/vars %{buildroot}%{_sysconfdir}/yum/vars
 %endif
-%endif
 
-%if %{with dnf5_obsoletes_dnf}
-rm %{buildroot}%{confdir}/automatic.conf
-rm %{buildroot}%{confdir}/%{name}.conf
-rm %{buildroot}%{_datadir}/locale/*/LC_MESSAGES/%{name}.mo
-rm %{buildroot}%{_mandir}/man8/%{name}-automatic.8*
-rm %{buildroot}%{_mandir}/man8/yum2dnf.8*
-rm %{buildroot}%{_unitdir}/%{name}-automatic.service
-rm %{buildroot}%{_unitdir}/%{name}-automatic.timer
-rm %{buildroot}%{_unitdir}/%{name}-automatic-notifyonly.service
-rm %{buildroot}%{_unitdir}/%{name}-automatic-notifyonly.timer
-rm %{buildroot}%{_unitdir}/%{name}-automatic-download.service
-rm %{buildroot}%{_unitdir}/%{name}-automatic-download.timer
-rm %{buildroot}%{_unitdir}/%{name}-automatic-install.service
-rm %{buildroot}%{_unitdir}/%{name}-automatic-install.timer
-rm %{buildroot}%{_unitdir}/%{name}-makecache.service
-rm %{buildroot}%{_unitdir}/%{name}-makecache.timer
-%endif
-
-%if 0%{?fedora} >= 41 || 0%{?rhel} >= 10
-%py3_shebang_fix %{buildroot}%{_bindir}/dnf-3
-%if %{without dnf5_obsoletes_dnf}
-%py3_shebang_fix %{buildroot}%{_bindir}/dnf-automatic
-%endif
-%py3_shebang_fix %{buildroot}%{python3_sitelib}/%{name}/cli/completion_helper.py
-%endif
 
 %check
 
@@ -299,7 +256,6 @@ ctest -VV
 popd
 
 
-%if %{without dnf5_obsoletes_dnf}
 %post
 %systemd_post dnf-makecache.timer
 
@@ -318,15 +274,15 @@ popd
 
 %postun automatic
 %systemd_postun_with_restart dnf-automatic.timer dnf-automatic-notifyonly.timer dnf-automatic-download.timer dnf-automatic-install.timer
-%endif
 
 
-%if %{without dnf5_obsoletes_dnf}
 %files -f %{name}.lang
 %{_bindir}/%{name}
 %if 0%{?rhel} && 0%{?rhel} <= 7
 %{_sysconfdir}/bash_completion.d/%{name}
 %else
+%dir %{_datadir}/bash-completion
+%dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/%{name}
 %endif
 %{_mandir}/man8/%{name}.8*
@@ -335,7 +291,7 @@ popd
 %{_mandir}/man5/dnf-transaction-json.5*
 %{_unitdir}/%{name}-makecache.service
 %{_unitdir}/%{name}-makecache.timer
-%endif
+%{_var}/cache/%{name}/
 
 %files data
 %license COPYING PACKAGE-LICENSING
@@ -344,16 +300,13 @@ popd
 %dir %{confdir}/modules.d
 %dir %{confdir}/modules.defaults.d
 %dir %{pluginconfpath}
-%if %{without dnf5_obsoletes_dnf}
 %dir %{confdir}/protected.d
+%dir %{confdir}/usr-drift-protected-paths.d
 %dir %{confdir}/vars
-%endif
 %dir %{confdir}/aliases.d
 %exclude %{confdir}/aliases.d/zypper.conf
-%if %{without dnf5_obsoletes_dnf}
-# If DNF5 does not obsolete DNF ownership of dnf.conf should be DNF's
 %config(noreplace) %{confdir}/%{name}.conf
-%endif
+%config(noreplace) %{confdir}/protected.d/%{name}.conf
 %config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
 %ghost %attr(644,-,-) %{_localstatedir}/log/hawkey.log
 %ghost %attr(644,-,-) %{_localstatedir}/log/%{name}.log
@@ -364,58 +317,52 @@ popd
 %ghost %attr(644,-,-) %{_sharedstatedir}/%{name}/groups.json
 %ghost %attr(755,-,-) %dir %{_sharedstatedir}/%{name}/yumdb
 %ghost %attr(755,-,-) %dir %{_sharedstatedir}/%{name}/history
-%{_mandir}/man5/%{name}4.conf.5*
-%if %{without dnf5_obsoletes_dnf}
 %{_mandir}/man5/%{name}.conf.5*
-%endif
 %{_tmpfilesdir}/%{name}.conf
+%{_sysconfdir}/libreport/events.d/collect_dnf.conf
 
-%if %{without dnf5_obsoletes_dnf}
 %files -n %{yum_subpackage_name}
-%{_bindir}/yum
-%{_mandir}/man8/yum.8*
 %if "%{yum_compat_level}" == "full"
-%{_sysconfdir}/yum
+%{_bindir}/yum
 %{_sysconfdir}/yum.conf
+%{_sysconfdir}/yum/pluginconf.d
+%{_sysconfdir}/yum/protected.d
+%{_sysconfdir}/yum/vars
+%{_mandir}/man8/yum.8*
 %{_mandir}/man5/yum.conf.5.*
 %{_mandir}/man8/yum-shell.8*
 %{_mandir}/man1/yum-aliases.1*
-# If DNF5 does not obsolete DNF, protected.d/yum.conf should be owned by DNF
 %config(noreplace) %{confdir}/protected.d/yum.conf
 %else
 %exclude %{_sysconfdir}/yum.conf
+%exclude %{_sysconfdir}/yum/pluginconf.d
+%exclude %{_sysconfdir}/yum/protected.d
+%exclude %{_sysconfdir}/yum/vars
 %exclude %{confdir}/protected.d/yum.conf
 %exclude %{_mandir}/man5/yum.conf.5.*
 %exclude %{_mandir}/man8/yum-shell.8*
 %exclude %{_mandir}/man1/yum-aliases.1*
 %endif
-%else
-# No %%{yum_subpackage_name} package
-%exclude %{confdir}/protected.d/yum.conf
-%exclude %{_mandir}/man5/yum.conf.5.*
+
+%if "%{yum_compat_level}" == "minimal"
+%{_bindir}/yum
+%{_mandir}/man8/yum.8*
+%endif
+
+%if "%{yum_compat_level}" == "preview"
+%{_bindir}/yum4
+%{_mandir}/man8/yum4.8*
 %exclude %{_mandir}/man8/yum.8*
-%exclude %{_mandir}/man8/yum-shell.8*
-%exclude %{_mandir}/man1/yum-aliases.1*
 %endif
 
 %files -n python3-%{name}
 %{_bindir}/%{name}-3
 %{_bindir}/%{name}4
-%dir %{_datadir}/bash-completion
-%dir %{_datadir}/bash-completion/completions
-%{_datadir}/bash-completion/completions/%{name}-3
-%{_datadir}/bash-completion/completions/%{name}4
-%{_mandir}/man8/%{name}4.8*
-%{_mandir}/man7/dnf4.modularity.7*
-%{_mandir}/man5/dnf4-transaction-json.5*
 %exclude %{python3_sitelib}/%{name}/automatic
-%{python3_sitelib}/%{name}-*.dist-info
 %{python3_sitelib}/%{name}/
 %dir %{py3pluginpath}
 %dir %{py3pluginpath}/__pycache__
-%{_var}/cache/%{name}/
 
-%if %{without dnf5_obsoletes_dnf}
 %files automatic
 %{_bindir}/%{name}-automatic
 %config(noreplace) %{confdir}/automatic.conf
@@ -429,181 +376,11 @@ popd
 %{_unitdir}/%{name}-automatic-install.service
 %{_unitdir}/%{name}-automatic-install.timer
 %{python3_sitelib}/%{name}/automatic/
-%endif
 
 %files bootc
 # bootc subpackage does not include any files
 
 %changelog
-* Thu Mar 06 2025 Evan Goode <mail@evangoo.de> - 4.23.0-1
-- spec: toggle dnf5_obsoletes_dnf for RHEL 11
-- automatic: Enhance errors reporting
-- automatic: Fix incorrect Error class instantiation
-- doc: `--disableexcludepkgs=all` doesn't affect just file configuration
-- Update ko.po
-- Update README.rst started 1
-- Tests: Avoid the multiprocessing forkserver method
-- cli: Print a plugin suggestion on installed but expired pgp key
-- spec: Provide dnf4 by python3-dnf
-- copr: Add Copr build files
-- Add support for --transient
-- bootc: Document `--transient` and `persistence`
-- bootc: Use ostree GObject API to get deployment status
-- bootc: "Re-locking": use ostree admin unlock --transient
-- spec: Add dnf-bootc subpackage
-- Require libdnf >= 0.74.0 with `persistence` option
-- Derive releasever_{major,minor} in conf, not substitutions
-- Override releasever_{major,minor} with provides
-- Add --releasever-major and --releasever-minor options
-- doc: Document detect_releasevers and update example
-- tests: Patch detect_releasevers, not detect_releasever
-- Document how --releasever, --releasever_{major,minor} affect each other
-- Move releasever_minor setter docstring to the correct function
-- Enable automatic PR reviews
-- Usage help: don't mark mandatory option parameters as optional
-
-* Tue Nov 12 2024 Evan Goode <mail@evangoo.de> - 4.22.0-1
-- doc: Naming of source and debug repos
-- spec: Move /var/cache/dnf from dnf to python3-dnf
-- spec: Remove preview yum_compat_level
-- spec: Simplify %files dnf section for both yum_compat_levels
-- spec: Fix ownership of /etc/yum tree
-- Allow --installroot on read-only bootc system
-- spec: If DNF5 obsoletes DNF, do not build dnf and yum packages
-- spec: If DNF5 obsoletes DNF, do not build dnf-automatic
-- Allow --downloadonly on read-only bootc system
-- base: Add kernel-core to reboot_needed list
-- AUTHORS: Add myself
-- Update need_reboot for dnf-automatic
-- doc: Example send_error_messages in /etc/dnf/automatic.conf
-- automatic: Check availability of config file
-- Updated conf_ref to reflect change in fastestmirror behavior
-- Fix display issue of a code snippet.
-- Print rpm package unpack errors to the user (RhBug:2312906)
-- Fix package location if baseurl is present in the metadata
-
-* Wed Aug 14 2024 Evan Goode <mail@evangoo.de> - 4.21.1-1
-- doc: minor formatting and consistency fixes
-- Allow local downloads to same `downloaddir`
-- Fix "console" width on non real terminals (pipe)
-- Update ostree/bootc host system check.
-- Update bootc hosts message to point to bootc --help
-- tests: Use PGP keys without SHA-1
-
-* Tue Jun 18 2024 Evan Goode <mail@evangoo.de> - 4.21.0-1
-- Add detection for ostree-based systems and warn users about losing changes
-- Fix: No traceback when Python interpreter is running with -P
-- Allow `%py3_shebang_fix` macro to add `-P` argument to shebang lines
-- man: Improve upgrade-minimal command docs (RHEL-6417)
-- Limit queries to nevra forms when provided by command
-- [doc] Remove provide of spec definition for repoquery command
-- Update the man page entry for the countme option
-- Drop collect file for ABRT
-
-* Wed Apr 24 2024 Jan Kolarik <jkolarik@redhat.com> - 4.20.0-1
-- repoquery: Fix loading filelists when -f is used (RhBug:2276012)
-- remove: --duplicates and --oldinstallonly exit with 0 when nothing to do (RHEL-6424)
-- spec: Do not add user site-packages directory to sys.path (RHEL-26646)
-- man: Prepare pages for dnf5 switch
-- spec: Prepare for switch of dnf5 in Rawhide
-
-* Fri Mar 29 2024 Evan Goode <mail@evangoo.de> - 4.19.2-1
-- Bump libdnf requirement to 0.73.1
-
-* Thu Mar 28 2024 Evan Goode <mail@evangoo.de> - 4.19.1-1
-- Add required `.readthedocs.yaml`, `conf.py` and set `sphinx_rtd_theme`
-- Drop dnf obsoletion temporarily
-- doc: Update FAQ entry on filelists
-- build: Adapt to changes in Fedora packaging of bash-completion
-- Support RPMTRANS_FLAG_DEPLOOPS
-- Add all candidates for reinstall to solver
-- Fix handling installonly packages reasons
-- Remove confusing sentence from documentation
-- Remove "leaf" word from documentation
-- Update documentation of history userinstalled command
-- Onboard packit tests
-- doc: Makecache with timer tries only one mirror
-- ELN: Don't obsolete DNF with DNF5 yet
-- bash-completion: Complete dnf command only if we own it
-- bash-completion: Prepare ownerships for dnf5 switch
-
-* Thu Feb 08 2024 Jan Kolarik <jkolarik@redhat.com> - 4.19.0-1
-- filelists metadata loading on demand
-- deltarpm disabled on Fedora by default
-- conf: Introduce new optional_metadata_types option to load filelists on demand
-- cli: Add a hint for user on transaction file dependency failure
-- cli: Setup filelists metadata for commands that need them
-- util: Add function for detecting file in specs
-- Fix failing API unit test on rawhide (RhBug:2261066)
-- automatic: Use add_security_filters, not _update_security_filters
-
-* Fri Dec 08 2023 Jan Kolarik <jkolarik@redhat.com> - 4.18.2-1
-- automatic: Add feature to allow emitters to invoke on dnf error
-- dnssec: Fix parsing PGP keys for DNS validation (RhBug:2249380)
-
-* Tue Nov 07 2023 Jan Kolarik <jkolarik@redhat.com> - 4.18.1-1
-- Do not translate repoquery time format strings (RhBug:2245773)
-- automatic: Fix applying the color option
-
-* Wed Oct 18 2023 Jan Kolarik <jkolarik@redhat.com> - 4.18.0-1
-- base: Add obsoleters of only latest versions (RhBug:2183279,2176263)
-- comps: Fix marking a group package as installed (RhBug:2066638)
-- distro-sync: Print better info message when no match (RhBug:2011850)
-- Include dist-info for python3-dnf (RhBug:2239323)
-- Revert "Block signals during RPM transaction processing" (RhBug:2133398)
-- Do not print details of verifying (RhBug:1908253)
-- Add Recommends %{_bindir}/sqlite3 for bash-completion for Fedora
-- conf: Split $releasever to $releasever_major and $releasever_minor (RhBug:1789346)
-- Allow DNF to be removed by DNF 5 (RhBug:2221907)
-- Update translations
-
-* Fri Sep 01 2023 Jan Kolarik <jkolarik@redhat.com> - 4.17.0-1
-- crypto: Use libdnf crypto API instead of using GnuPG/GpgME
-- Reprotect dnf, unprotect python3-dnf (RhBug:2221905)
-- Block signals during RPM transaction processing (RhBug:2133398)
-- Fix bash completion due to sqlite changes (RhBug:2232052)
-- automatic: allow use of STARTTLS/TLS
-- automatic: use email_port specified in config
-
-* Thu Jul 27 2023 Nicola Sella <nsella@redhat.com> - 4.16.2-1
-- depend on /etc/dnf/dnf.conf, not libdnf5
-- Update repo metadata cache pattern to include zstd
-- Add provide exception handling
-- When parsing over a KVP list, do not return till the whole list is parsed
-- Provide /usr/bin/dnf4 symlink to /usr/bin/dnf-3
-- Document the symbols in the output of `dnf history list` (RhBug:2172067)
-
-* Mon May 29 2023 Jan Kolarik <jkolarik@redhat.com> - 4.16.1-1
-- DNF5 should not deprecate DNF on Fedora 38
-
-* Thu May 25 2023 Jan Kolarik <jkolarik@redhat.com> - 4.16.0-1
-- Remove ownership of dnf.conf, protected.d, vars
-- Add requirement of libdnf5 to dnf-data
-- dnf-automatic: require python3-dnf, not dnf
-
-* Thu May 18 2023 Jan Kolarik <jkolarik@redhat.com> - 4.15.1-1
-- automatic: Fix online detection with proxy (RhBug:2022440)
-- automatic: Return an error when transaction fails (RhBug:2170093)
-- repoquery: Allow uppercased query tags (RhBug:2185239)
-- Unprotect dnf and yum, protect python3-dnf
-
-* Thu Apr 06 2023 Jan Kolarik <jkolarik@redhat.com> - 4.15.0-1
-- Add reboot option to DNF Automatic (RhBug:2124793)
-- Add support for rollback of group upgrade rollback (RhBug:2016070)
-- Omit src RPMs from check-update (RhBug:2151910)
-- repoquery: Properly sanitize queryformat strings (RhBug:2140884)
-- Don't double-encode RPM URLs passed on CLI (RhBug:2103015)
-- Allow passing CLI options when loading remote cfg (RhBug:2060127)
-- Ignore processing variable files with unsupported encoding (RhBug:2141215)
-- Fix AttributeError when IO busy and press ctrl+c (RhBug:2172433)
-- cli: Allow = in setopt values
-- Mark strftime format specifiers for translation
-- Unload plugins upon their deletion
-- Fixes in docs and help command
-- Fix plugins unit tests
-- Add unit tests for dnf mark
-- smtplib: catch OSError, not SMTPException
-
 * Fri Sep 09 2022 Jaroslav Rohel <jrohel@redhat.com> - 4.14.0-1
 - doc: Describe how gpg keys are stored for `repo_ggpcheck` (RhBug:2020678)
 - Set default value for variable to prevent crash (RhBug:2091636)
@@ -668,7 +445,7 @@ popd
 - Add aliases for commands: info, updateinfo, provides (RhBug:1938333)
 - Add report about demodularized rpms into module info (RhBug:1805260)
 - Remove DNSSEC errors on COPR group email keys
-- Documentation improvements - bugs: 1938352, 1993899, 1963704
+- Documentation inprovements - bugs: 1938352, 1993899, 1963704
 
 * Mon Jun 14 2021 Pavla Kratochvilova <pkratoch@redhat.com> - 4.8.0-1
 - Do not assume that a remote rpm is complete if present
@@ -694,7 +471,7 @@ popd
 - [doc] installonly_limit documentation follows behavior
 - Prevent traceback (catch ValueError) if pkg is from cmdline
 - Add documentation for config option sslverifystatus (RhBug:1814383)
-- Check for specific key string when verifying signatures (RhBug:1915990)
+- Check for specific key string when verifing signatures (RhBug:1915990)
 - Use rpmkeys binary to verify package signature (RhBug:1915990)
 - Bugs fixed (RhBug:1916783)
 - Preserve file mode during log rotation (RhBug:1910084)
@@ -760,7 +537,7 @@ popd
 * Tue Oct 06 2020 Nicola Sella <nsella@redhat.com> - 4.4.0-1
 - Handle empty comps group name (RhBug:1826198)
 - Remove dead history info code (RhBug:1845800)
-- Improve command emitter in dnf-automatic
+- Improve command emmitter in dnf-automatic
 - Enhance --querytags and --qf help output
 - [history] add option --reverse to history list (RhBug:1846692)
 - Add logfilelevel configuration (RhBug:1802074)
@@ -1204,7 +981,7 @@ popd
 - Update to 2.7.2-1
 - Added new option ``--comment=<comment>`` that adds a comment to transaction in history
 - :meth:`dnf.Base.pre_configure_plugin` configure plugins by running their pre_configure() method
-- Added pre_configure() method for plugins and commands to configure dnf before repos are loaded
+- Added pre_configure() methotd for plugins and commands to configure dnf before repos are loaded
 - Resolves: rhbz#1421478 - dnf repository-packages: error: unrecognized arguments: -x rust-rpm-macros
 - Resolves: rhbz#1491560 - 'dnf check' reports spurious "has missing requires of" errors
 - Resolves: rhbz#1465292 - DNF remove protected duplicate package

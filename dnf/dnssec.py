@@ -150,7 +150,7 @@ class DNSSECKeyVerification:
         if key_union == input_key_string:
             logger.debug("Cache hit, valid key")
             return Validity.VALID
-        elif isinstance(key_union, NoKey):
+        elif key_union is NoKey:
             logger.debug("Cache hit, proven non-existence")
             return Validity.PROVEN_NONEXISTENCE
         else:
@@ -184,10 +184,6 @@ class DNSSECKeyVerification:
 
         if ctx.add_ta_file("/var/lib/unbound/root.key") != 0:
             logger.debug("Unbound context: Failed to add trust anchor file")
-
-        if input_key.email is None:
-            logger.debug("A key has no associated e-mail address")
-            return Validity.ERROR
 
         status, result = ctx.resolve(email2location(input_key.email),
                                      RR_TYPE_OPENPGPKEY, unbound.RR_CLASS_IN)
@@ -277,27 +273,9 @@ class RpmImportedKeys:
         return_list = []
         for pkg in packages:
             packager = dnf.rpm.getheader(pkg, 'packager')
-            if packager is None:
-                email = None
-            else:
-                email = re.search('<(.*@.*)>', packager).group(1)
-            if email is None:
-                logger.debug(any_msg(_(
-                    "Exempting key package {} from a validation "
-                    "because it's not bound to any e-mail address").format(
-                        dnf.rpm.getheader(pkg, 'nevra'))))
-                continue
+            email = re.search('<(.*@.*)>', packager).group(1)
             description = dnf.rpm.getheader(pkg, 'description')
-            # Extract Radix-64-encoded PGP key. Without armor headers and
-            # a checksum.
-            key_lines = []
-            in_headers = True
-            for line in description.split('\n')[0:-3]:
-                if in_headers:
-                    if re.match(r'\A\s*\Z', line, re.NOFLAG):
-                        in_headers = False
-                else:
-                    key_lines.append(line)
+            key_lines = description.split('\n')[3:-3]
             key_str = ''.join(key_lines)
             return_list += [KeyInfo(email, key_str.encode('ascii'))]
 

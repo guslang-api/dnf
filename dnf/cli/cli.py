@@ -29,7 +29,9 @@ try:
     from collections.abc import Sequence
 except ImportError:
     from collections import Sequence
+from collections import defaultdict
 import datetime
+from fnmatch import fnmatch
 import logging
 import operator
 import os
@@ -244,10 +246,31 @@ class BaseCli(dnf.Base):
                         logger.info(_("A transient overlay will be created on /usr that will be discarded on reboot. "
                                       "Keep in mind that changes to /etc and /var will still persist, and packages "
                                       "commonly modify these directories."))
+                self._persistence = libdnf.transaction.TransactionPersistence_TRANSIENT
+
+                # Check whether the transaction modifies usr_drift_protected_paths
+                transaction_protected_paths = defaultdict(list)
+                for pkg in trans:
+                    for pkg_file_path in sorted(pkg.files):
+                        for protected_pattern in self.conf.usr_drift_protected_paths:
+                            if fnmatch(pkg_file_path, protected_pattern):
+                                transaction_protected_paths[pkg.nevra].append(pkg_file_path)
+                if transaction_protected_paths:
+                    logger.info(_('This operation would modify the following paths, possibly introducing '
+                                  'inconsistencies when the transient overlay on /usr is discarded. See the '
+                                  'usr_drift_protected_paths configuration option for more information.'))
+                    for nevra, protected_paths in transaction_protected_paths.items():
+                        logger.info(nevra)
+                        for protected_path in protected_paths:
+                            logger.info("  %s" % protected_path)
+                    raise CliError(_("Operation aborted. Pass --setopt=usr_drift_protected_paths= to disable this check and proceed anyway."))
+
             else:
                 # Not a bootc transaction.
                 if self.conf.persistence == "transient":
                     raise CliError(_("Transient transactions are only supported on bootc systems."))
+
+                self._persistence = libdnf.transaction.TransactionPersistence_PERSIST
 
             if self._promptWanted():
                 if self.conf.assumeno or not self.output.userconfirm():
@@ -312,7 +335,6 @@ class BaseCli(dnf.Base):
         :raises: Will raise :class:`Error` if there's a problem
         """
         error_messages = []
-        print_plugin_recommendation = False
         for po in pkgs:
             result, errmsg = self._sig_check_pkg(po)
 
@@ -333,8 +355,6 @@ class BaseCli(dnf.Base):
                     self._get_key_for_package(po, fn)
                 except (dnf.exceptions.Error, ValueError) as e:
                     error_messages.append(str(e))
-                    if isinstance(e, dnf.exceptions.InvalidInstalledGPGKeyError):
-                        print_plugin_recommendation = True
 
             else:
                 # Fatal error
@@ -343,11 +363,6 @@ class BaseCli(dnf.Base):
         if error_messages:
             for msg in error_messages:
                 logger.critical(msg)
-            if print_plugin_recommendation:
-                msg = '\n' + _("Try to add '--enableplugin=expired-pgp-keys' to resolve the problem. "
-                               "Note: This plugin might not be installed by default, as it is part of "
-                               "the 'dnf-plugins-core' package.") + '\n'
-                logger.info(msg)
             raise dnf.exceptions.Error(_("GPG check FAILED"))
 
     def latest_changelogs(self, package):
@@ -367,7 +382,7 @@ class BaseCli(dnf.Base):
     def format_changelog(self, changelog):
         """Return changelog formatted as in spec file"""
         chlog_str = '* %s %s\n%s\n' % (
-            changelog['timestamp'].strftime("%c"),
+            changelog['timestamp'].strftime("%a %b %d %X %Y"),
             dnf.i18n.ucd(changelog['author']),
             dnf.i18n.ucd(changelog['text']))
         return chlog_str
@@ -858,7 +873,7 @@ class Cli(object):
         if opts.destdir is not None:
             self.base.conf.destdir = opts.destdir
             if not self.base.conf.downloadonly and opts.command not in (
-                    'download', 'manifest', 'system-upgrade', 'reposync', 'modulesync'):
+                    'download', 'system-upgrade', 'reposync', 'modulesync'):
                 logger.critical(_('--destdir or --downloaddir must be used with --downloadonly '
                                   'or download or system-upgrade command.')
                 )
